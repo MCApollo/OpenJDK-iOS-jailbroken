@@ -1,0 +1,51 @@
+#!/bin/bash
+[[ ! -d ./cups ]] && git clone https://github.com/apple/cups cups
+# Only need the headers.
+./configure				\
+	--openjdk-target=aarch64-apple-darwin17	\
+	--disable-warnings-as-errors	\
+	--enable-headless-only		\
+	--with-jdk-variant=normal	\
+	--with-jvm-variants=zero	\
+	--disable-hotspot-gtest		\
+	--disable-precompiled-headers	\
+	--with-cups-include=$PWD/cups	\
+	--with-build-jdk=/mnt/storage/build-linux/openjdk-mobile11/build/linux-x86_64-normal-server-release/images/jdk/	\
+	--with-boot-jdk=/mnt/storage/build-linux/openjdk-mobile11/build/linux-x86_64-normal-server-release/images/jdk/
+
+echo "cd build/*; make images"
+
+# MCApollo
+# Congrats, you're attempting to build this:
+# You found this so I'm guessing I should leave some notes while compiling.
+# Days wasted: 4.
+
+# I'm building this for jailbroken iOS devices.
+# I have edited the make files, you might want to undo (or review) that.
+# This repo is pulled from a pull request that supports iOS for openjdk 11.
+
+
+# With that, let's start the Notes:
+
+# Edit the spec.gmk and openjdk.gmk files after the configuration.
+# openjdk.gmk for me was configured wrong, leading to me wasting a day trying to fix compiler errors.
+# COMPILER1 and COMPILER2 don't exist for bsd_zero, don't tear your hair out and find out at 3AM.
+
+# Which leads to the second point VVVV
+
+# spec.gmk, buildjdk.gmk's BUILD_CC BUILD_CXX BUILD_LD BUILD_LDCXX-
+# should be your host's compiler tools, not the target.
+# adlc will fail to build if you don't fix this.
+# For me, buildjdk.gmk was wrong, leading to the cross compiler's $CC being used to continue the build;
+# The output of that was me wasting a day trying to find out why I ended up with no output binaries.
+
+# I thought that the buildjdk.gmk was wrong, but it's not. Read the header for buildjdk.gmk- it's for the host.
+
+# A copy of the edited configure script should be in build/.configure-support if it not in the commit.
+
+# Target is aarch64-apple-darwin18.2 because that's the triple with the toolchain. (uname kernel version of my jailbroken device)
+# Follow the directions listed on the openjdk's website about compiling for iOS.
+# There's some libs you need, otherwise run this script. aarch64-macos-ios will work if you're using the extra cflags.
+
+
+# Happy cross compiling, I spent 4 days wrapping my head around this. Hopefully this helps someone.

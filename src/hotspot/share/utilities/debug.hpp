@@ -196,6 +196,7 @@ void warning(const char* format, ...) ATTRIBUTE_PRINTF(1, 2);
 // use of an array type.
 
 template<bool x> struct STATIC_ASSERT_FAILURE;
+template<> struct STATIC_ASSERT_FAILURE<false> { enum { value = 0 }; };
 template<> struct STATIC_ASSERT_FAILURE<true> { enum { value = 1 }; };
 
 #define STATIC_ASSERT(Cond) \
