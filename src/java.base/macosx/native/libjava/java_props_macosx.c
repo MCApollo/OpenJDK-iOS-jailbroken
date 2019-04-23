@@ -23,15 +23,26 @@
  * questions.
  */
 
+#ifdef __APPLE__
+#include <TargetConditionals.h>
+#else
+#define TARGET_OS_IPHONE 0
+#endif
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <objc/objc-runtime.h>
 
+#if ! TARGET_OS_IPHONE
 #include <Security/AuthSession.h>
-#include <CoreFoundation/CoreFoundation.h>
 #include <SystemConfiguration/SystemConfiguration.h>
+#else
+#include <CoreFoundation/CoreFoundation.h>
+#include <CoreFoundation/CFLocale.h>
+#endif
 #include <Foundation/Foundation.h>
+#include <CoreFoundation/CoreFoundation.h>
 
 #include "java_props_macosx.h"
 
@@ -48,6 +59,7 @@ char *getPosixLocale(int cat) {
 #ifndef kCFCoreFoundationVersionNumber10_11_Max
 #define kCFCoreFoundationVersionNumber10_11_Max 1299
 #endif
+#if ! TARGET_OS_IPHONE
 char *getMacOSXLocale(int cat) {
     const char* retVal = NULL;
     char languageString[LOCALEIDLENGTH];
@@ -135,6 +147,22 @@ char *getMacOSXLocale(int cat) {
 
     return NULL;
 }
+#else
+char *getMacOSXLocale(int cat) {
+    char localeString[LOCALEIDLENGTH];
+    // Get current user locale.
+    CFLocaleRef loc = CFLocaleCopyCurrent();
+    char *localstr;
+    if (CFStringGetCString(CFLocaleGetIdentifier(loc),
+                           localeString, LOCALEIDLENGTH,
+                           kCFStringEncodingUTF8))
+      localstr = strdup(localeString);
+    else
+      localstr =  NULL;
+
+    CFRelease(loc);
+    return (localstr);
+}
 
 /* Language IDs use the language designators and (optional) region
  * and script designators of BCP 47.  So possible formats are:
@@ -219,6 +247,7 @@ int isInAquaSession() {
         // if "true" then tell the caller we're in an Aqua session without actually checking
         return 1;
     }
+#if ! TARGET_OS_IPHONE
     // Is the WindowServer available?
     SecuritySessionId session_id;
     SessionAttributeBits session_info;
@@ -228,9 +257,11 @@ int isInAquaSession() {
             return 1;
         }
     }
+#endif
     return 0;
 }
 
+#if ! TARGET_OS_IPHONE
 // 10.9 SDK does not include the NSOperatingSystemVersion struct.
 // For now, create our own
 typedef struct {
@@ -277,7 +308,49 @@ void setOSNameAndVersion(java_props_t *sprops) {
     }
     sprops->os_version = osVersionCStr;
 }
+#else
+static char* getIOSVersion() {
+    id uidevice_class = objc_getClass("UIDevice");
+    if (uidevice_class == nil) {
+        return NULL;
+    }
+    SEL current_device_sel = sel_registerName("currentDevice");
+    Method current_device_meth = class_getClassMethod((Class)uidevice_class,
+          current_device_sel);
+    if (current_device_meth == NULL) {
+        return NULL;
+    }
+    IMP current_device_imp = method_getImplementation(current_device_meth);
+    if (current_device_imp == NULL) {
+        return NULL;
+    }
+    id uidevice = current_device_imp(uidevice_class, current_device_sel);
+    if (uidevice == nil) {
+        return NULL;
+    }
 
+    id os_version = objc_msgSend(uidevice, sel_registerName("systemVersion"));
+    if (os_version == nil) {
+        return NULL;
+    }
+
+    SEL utf8string = sel_registerName("UTF8String");
+    if (utf8string == NULL) {
+        return NULL;
+    }
+    return strdup((char*)objc_msgSend(os_version, utf8string));
+}
+
+void setOSNameAndVersion(java_props_t *sprops) {
+    sprops->os_name = strdup("iOS");
+    char *version = getIOSVersion();
+    if (version == NULL) {
+        sprops->os_version = strdup("9.0");
+    } else {
+        sprops->os_version = version;
+    }
+}
+#endif
 
 static Boolean getProxyInfoForProtocol(CFDictionaryRef inDict, CFStringRef inEnabledKey,
                                        CFStringRef inHostKey, CFStringRef inPortKey,
@@ -409,6 +482,7 @@ void setUserHome(java_props_t *sprops) {
  * Method for fetching proxy info and storing it in the property list.
  */
 void setProxyProperties(java_props_t *sProps) {
+#if ! TARGET_OS_IPHONE
     if (sProps == NULL) return;
 
     char buf[16];    /* Used for %d of an int - 16 is plenty */
@@ -484,4 +558,5 @@ void setProxyProperties(java_props_t *sProps) {
 #undef CHECK_PROXY
 
     CFRelease(dict);
+#endif
 }

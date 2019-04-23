@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 1998, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -292,9 +293,6 @@ inline int wcslen(const jchar* x) { return wcslen((const wchar_t*)x); }
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=55382 and
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=53017
 //
-// GCC versions older than 4.6.4 would fail even with "+0", and needs additional
-// cast to typeof(x) to work around the similar bug.
-//
-#define ATTRIBUTE_ALIGNED(x) __attribute__((aligned((typeof(x))x+0)))
+#define ATTRIBUTE_ALIGNED(x) __attribute__((aligned(x+0)))
 
 #endif // SHARE_VM_UTILITIES_GLOBALDEFINITIONS_GCC_HPP

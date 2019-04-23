@@ -111,9 +111,11 @@
 
 #ifdef __APPLE__
   #include <mach/mach.h> // semaphore_* API
+#if ! TARGET_OS_IPHONE
   #include <mach-o/dyld.h>
   #include <sys/proc_info.h>
   #include <objc/objc-auto.h>
+#endif
 #endif
 
 #ifndef MAP_ANONYMOUS
@@ -1530,7 +1532,7 @@ int os::get_loaded_modules_info(os::LoadedModulesCallbackFunc callback, void *pa
   }
 
   dlclose(handle);
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && ! TARGET_OS_IPHONE
   for (uint32_t i = 1; i < _dyld_image_count(); i++) {
     // Value for top_address is returned as 0 since we don't have any information about module size
     if (callback(_dyld_get_image_name(i), (address)_dyld_get_image_header(i), (address)0, param)) {
@@ -3254,7 +3256,7 @@ void os::init(void) {
   Bsd::clock_init();
   initial_time_count = javaTimeNanos();
 
-#ifdef __APPLE__
+#if defined(__APPLE__) && ! TARGET_OS_IPHONE
   // XXXDARWIN
   // Work around the unaligned VM callbacks in hotspot's
   // sharedRuntime. The callbacks don't use SSE2 instructions, and work on
